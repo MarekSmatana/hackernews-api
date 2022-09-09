@@ -16,5 +16,11 @@ export const User = objectType({
           .links()
       },
     })
+    t.nonNull.list.nonNull.field("votes", {
+      type: "Link",
+      resolve({ id }, _, { prisma }) {
+        return prisma.user.findUnique({ where: { id } }).votes()
+      },
+    })
   },
 })
