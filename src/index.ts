@@ -1,16 +1,17 @@
 import { ApolloServer } from "apollo-server"
-// import { ApolloServerPluginLandingPageGraphQLPlayground } from "apollo-server-core" // for offline gql playground
 import { schema } from "./schema"
 import { context } from "./context"
+import { ApolloServerPluginLandingPageLocalDefault } from "apollo-server-core"
 
-const port = 3210
+const port = process.env.PORT || 3000
 
 export const apolloServer = new ApolloServer({
   schema,
   context,
-  // plugins: [ApolloServerPluginLandingPageGraphQLPlayground()],
+  introspection: true,
+  plugins: [ApolloServerPluginLandingPageLocalDefault],
 })
 
-apolloServer.listen({ port }).then(({ url, ...rest }) => {
+apolloServer.listen({ port }).then(({ url }) => {
   console.log(`🚀 Server is ready at ${url}`)
 })
