@@ -1,4 +1,30 @@
-import { extendType, idArg, nonNull, objectType, stringArg } from "nexus"
+import { Prisma } from "@prisma/client"
+import {
+  arg,
+  enumType,
+  extendType,
+  idArg,
+  inputObjectType,
+  intArg,
+  list,
+  nonNull,
+  objectType,
+  stringArg,
+} from "nexus"
+
+export const Sort = enumType({
+  name: "Sort",
+  members: ["asc", "desc"],
+})
+
+export const LinkOrderByInput = inputObjectType({
+  name: "LinkOrderByInput",
+  definition(t) {
+    t.field("description", { type: Sort })
+    t.field("url", { type: Sort })
+    t.field("createdAt", { type: Sort })
+  },
+})
 
 export const Link = objectType({
   name: "Link",
@@ -28,13 +54,61 @@ export const Link = objectType({
   },
 })
 
+export const Feed = objectType({
+  name: "Feed",
+  definition(t) {
+    t.nonNull.list.nonNull.field("links", { type: Link })
+    t.nonNull.int("count")
+    t.id("id")
+  },
+})
+
 export const LinkQuery = extendType({
   type: "Query",
   definition(t) {
-    t.nonNull.list.nonNull.field("feed", {
-      type: "Link",
-      resolve(parent, args, context, info) {
-        return context.prisma.link.findMany()
+    t.nonNull.field("feed", {
+      type: "Feed",
+      args: {
+        filter: stringArg(),
+        skip: intArg(),
+        take: intArg(),
+        orderBy: arg({ type: list(nonNull(LinkOrderByInput)) }),
+      },
+      async resolve(_, { filter, skip, take, orderBy }, context) {
+        const where = filter
+          ? {
+              OR: [
+                {
+                  description: { contains: filter },
+                },
+                {
+                  url: { contains: filter },
+                },
+              ],
+            }
+          : {}
+
+        const links = await context.prisma.link.findMany({
+          where,
+          skip: skip ?? undefined,
+          take: take ?? undefined,
+          orderBy:
+            (orderBy as Prisma.Enumerable<Prisma.LinkOrderByWithRelationInput>) ??
+            undefined,
+        })
+        const count = await context.prisma.link.count({ where })
+        const id = `main-feed:${JSON.stringify({
+          filter,
+          skip,
+          take,
+          orderBy,
+        })}`
+
+        return {
+          id,
+          links,
+          count,
+        }
       },
     })
     t.nullable.field("link", {
